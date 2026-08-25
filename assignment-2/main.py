@@ -1,5 +1,4 @@
 import os
-import argparse
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -241,33 +240,12 @@ def run_task2(data_dir="data", output_dir="figures"):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Assignment 2: EVD/SVD image reconstruction"
-    )
-    parser.add_argument(
-        "--task",
-        choices=["1", "2", "both"],
-        default="both",
-        help="Which task to run (default: both)",
-    )
-    parser.add_argument(
-        "--data_dir", default="data", help="Folder containing the input images"
-    )
-    parser.add_argument(
-        "--output_dir",
-        default="figures",
-        help="Folder to write output figures to",
-    )
-    args = parser.parse_args()
+    print("=== Task 1: EVD and SVD on square image ===")
+    run_task1()
+    print()
 
-    if args.task in ("1", "both"):
-        print("=== Task 1: EVD and SVD on square image ===")
-        run_task1(data_dir=args.data_dir, output_dir=args.output_dir)
-        print()
-
-    if args.task in ("2", "both"):
-        print("=== Task 2: SVD on rectangular image ===")
-        run_task2(data_dir=args.data_dir, output_dir=args.output_dir)
+    print("=== Task 2: SVD on rectangular image ===")
+    run_task2()
 
 
 if __name__ == "__main__":
