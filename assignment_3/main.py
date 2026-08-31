@@ -1,3 +1,4 @@
+import math
 import random
 import matplotlib.pyplot as plt
 
@@ -160,6 +161,8 @@ def plotFittedCurve(xs, ys, xSorted, weights, chosenDegree):
 
 
 def classifyFit(trainMse, testMse, chosenTrainMse, chosenTestMse, threshold=0.01):
+    if math.isnan(trainMse) or math.isnan(testMse):
+        return "solver diverged (numerical overflow)"
     trainBetter = trainMse < chosenTrainMse * (1 - threshold)
     trainWorse = trainMse > chosenTrainMse * (1 + threshold)
     testBetter = testMse < chosenTestMse * (1 - threshold)
@@ -195,7 +198,7 @@ if __name__ == "__main__":
     xTrain, yTrain, xTest, yTest, xVal, yVal = splitData(xs, ys, 0.6, 0.2, seed=42)
 
     results = []
-    for degree in range(1, 17):
+    for degree in range(1, 76):
         w = fitPolynomial(xTrain, yTrain, degree)
         trainPred = predict(w, xTrain)
         testPred = predict(w, xTest)
@@ -231,13 +234,28 @@ if __name__ == "__main__":
     print(f"validation mse            = {valMse:.4f}")
     print("weights:", chosenW)
 
+    overfitLabels = {r[0]: classifyFit(r[1], r[2], chosenTrainMse, chosenTestMse) for r in results}
+    overfitDegree = next((d for d, label in overfitLabels.items() if label == "overfit"), None)
+    divergeDegree = next((d for d, label in overfitLabels.items() if label == "solver diverged (numerical overflow)"), None)
+
+    print()
+    print("checked degrees 1-75 for genuine overfitting:")
+    if overfitDegree is None:
+        print("no degree in this range classified as overfit")
+    else:
+        print(f"overfitting found at degree {overfitDegree}")
+    if divergeDegree is not None:
+        print(f"solver starts diverging (numerical overflow) at degree {divergeDegree}")
+
     with open("results.txt", "w") as f:
-        f.write("degree,train_mse,test_mse\n")
+        f.write("degree,train_mse,test_mse,label\n")
         for degree, trainMseV, testMseV, _ in results:
-            f.write(f"{degree},{trainMseV},{testMseV}\n")
+            f.write(f"{degree},{trainMseV},{testMseV},{overfitLabels[degree]}\n")
         f.write(f"\nargmin_degree,{argminDegree}\n")
         f.write(f"chosen_degree,{chosenDegree}\n")
         f.write(f"val_mse,{valMse}\n")
+        f.write(f"overfit_degree_found,{overfitDegree}\n")
+        f.write(f"solver_diverges_at_degree,{divergeDegree}\n")
         f.write("weights," + ",".join(str(v) for v in chosenW) + "\n")
 
     resultsByDegree = {r[0]: (r[1], r[2], r[3]) for r in results}
