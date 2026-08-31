@@ -159,15 +159,28 @@ def plotFittedCurve(xs, ys, xSorted, weights, chosenDegree):
     plt.close()
 
 
-def plotUnderfitOverfitComparison(xs, ys, xTrain, yTrain, xSorted, chosenDegree, chosenW):
-    degreesToShow = [2, chosenDegree, 15]
+def classifyFit(trainMse, testMse, chosenTrainMse, chosenTestMse, threshold=0.01):
+    trainBetter = trainMse < chosenTrainMse * (1 - threshold)
+    trainWorse = trainMse > chosenTrainMse * (1 + threshold)
+    testBetter = testMse < chosenTestMse * (1 - threshold)
+    testWorse = testMse > chosenTestMse * (1 + threshold)
+    if trainBetter and testWorse:
+        return "overfit"
+    if trainWorse and testWorse:
+        return "underfit"
+    if testBetter:
+        return "better than chosen fit"
+    return "excess complexity - no gain"
+
+
+def plotUnderfitOverfitComparison(xs, ys, xSorted, degreesToShow, resultsByDegree, chosenDegree, chosenTrainMse, chosenTestMse):
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), sharey=True)
     for ax, degree in zip(axes, degreesToShow):
-        w = chosenW if degree == chosenDegree else fitPolynomial(xTrain, yTrain, degree)
+        trainMse, testMse, w = resultsByDegree[degree]
         yFit = predict(w, xSorted)
+        label = "chosen fit" if degree == chosenDegree else classifyFit(trainMse, testMse, chosenTrainMse, chosenTestMse)
         ax.scatter(xs, ys, s=3, alpha=0.15)
         ax.plot(xSorted, yFit, color="red", linewidth=2)
-        label = "underfit" if degree < chosenDegree else ("chosen fit" if degree == chosenDegree else "overfit")
         ax.set_title(f"degree {degree} ({label})")
         ax.set_xlabel("x")
         ax.grid(alpha=0.3)
@@ -182,7 +195,7 @@ if __name__ == "__main__":
     xTrain, yTrain, xTest, yTest, xVal, yVal = splitData(xs, ys, 0.6, 0.2, seed=42)
 
     results = []
-    for degree in range(1, 13):
+    for degree in range(1, 17):
         w = fitPolynomial(xTrain, yTrain, degree)
         trainPred = predict(w, xTrain)
         testPred = predict(w, xTest)
@@ -205,7 +218,10 @@ if __name__ == "__main__":
             break
 
     chosenDegree = elbowDegree
-    chosenW = [r[3] for r in results if r[0] == chosenDegree][0]
+    chosenResult = [r for r in results if r[0] == chosenDegree][0]
+    chosenTrainMse = chosenResult[1]
+    chosenTestMse = chosenResult[2]
+    chosenW = chosenResult[3]
     valPred = predict(chosenW, xVal)
     valMse = computeMse(yVal, valPred)
 
@@ -224,6 +240,8 @@ if __name__ == "__main__":
         f.write(f"val_mse,{valMse}\n")
         f.write("weights," + ",".join(str(v) for v in chosenW) + "\n")
 
+    resultsByDegree = {r[0]: (r[1], r[2], r[3]) for r in results}
+
     degrees = [r[0] for r in results]
     trainErrs = [r[1] for r in results]
     testErrs = [r[2] for r in results]
@@ -231,6 +249,8 @@ if __name__ == "__main__":
 
     xSorted = mergeSort(xs)
     plotFittedCurve(xs, ys, xSorted, chosenW, chosenDegree)
-    plotUnderfitOverfitComparison(xs, ys, xTrain, yTrain, xSorted, chosenDegree, chosenW)
+
+    degreesToShow = [2, chosenDegree, 16]
+    plotUnderfitOverfitComparison(xs, ys, xSorted, degreesToShow, resultsByDegree, chosenDegree, chosenTrainMse, chosenTestMse)
 
     print("saved degree_vs_error.png, fitted_curve.png, underfit_overfit_comparison.png")
